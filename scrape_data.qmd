@@ -12,6 +12,7 @@ library(rvest)
 library(dplyr)
 library(stringr)
 library(xml2)
+library(here)
 ```
 
 ## Standard Stats
@@ -361,4 +362,50 @@ for (i in 1:length(urls)) {
 ```{r}
 df_final %>%
   write.csv("data/possession_stats.csv", row.names = FALSE)
+```
+
+## Combine Data
+
+```{r}
+#| message: false
+df_base <- read_csv(here("data", "standard_stats.csv"))
+df_shoot <- read_csv(here("data", "shooting_stats.csv"))
+df_pass <- read_csv(here("data", "passing_stats.csv"))
+df_pass_type <- read_csv(here("data", "passing_types_stats.csv"))
+df_create <- read_csv(here("data", "create_stats.csv"))
+df_defense <- read_csv(here("data", "defensive_stats.csv"))
+df_poss <- read_csv(here("data", "possession_stats.csv"))
+
+
+df_full <- df_base %>%
+  filter(mins_played > 500) %>%
+  left_join(df_shoot, by = c("player", "nation", "pos", "team"), keep = FALSE, suffix = c("", ".remove")) %>%
+  left_join(df_pass, by = c("player", "nation", "pos", "team"), keep = FALSE, suffix = c("", ".remove")) %>%
+  left_join(df_pass_type, by = c("player", "nation", "pos", "team"), keep = FALSE, suffix = c("", ".remove")) %>%
+  left_join(df_create, by = c("player", "nation", "pos", "team"), keep = FALSE, suffix = c("", ".remove")) %>%
+  left_join(df_defense, by = c("player", "nation", "pos", "team"), keep = FALSE, suffix = c("", ".remove")) %>%
+  left_join(df_poss, by = c("player", "nation", "pos", "team"), keep = FALSE, suffix = c("", ".remove")) %>%
+  select(-ends_with(".remove"))
+
+df_full %>%
+  write_csv("data/players.csv")
+```
+
+### Per 90 all relevant columns in data
+
+```{r}
+df_full %>%
+  relocate(
+    c(avg_shot_dist, ends_with("_pct")), 
+    .after = prog_passes_rec
+    ) %>%
+  select(-ends_with("_p90")) %>%
+  mutate(
+    across(
+      .cols = goals:prog_passes_rec, 
+      .fns = ~ ./played_90s
+      )
+    ) %>%
+  write_csv("data/players_p90.csv")
+  
 ```
