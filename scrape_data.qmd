@@ -1,0 +1,364 @@
+---
+title: "Scrape Data"
+format: html
+editor: visual
+---
+
+## Setup
+
+```{r}
+library(tidyverse)
+library(rvest)
+library(dplyr)
+library(stringr)
+library(xml2)
+```
+
+## Standard Stats
+
+```{r}
+urls <- c("https://fbref.com/en/comps/9/stats/Premier-League-Stats", "https://fbref.com/en/comps/20/stats/Bundesliga-Stats", "https://fbref.com/en/comps/12/stats/La-Liga-Stats", "https://fbref.com/en/comps/11/stats/Serie-A-Stats", "https://fbref.com/en/comps/13/stats/Ligue-1-Stats")
+
+df_final <- data.frame()
+
+for (i in 1:length(urls)) {
+  
+  url <- urls[i]
+  webpage <- read_html(url)
+  df <- read_html(webpage %>% 
+              as.character() %>%
+              str_replace_all("<!--", '') %>%
+              str_replace_all("-->", '')
+  ) %>%
+    html_elements("table") %>%
+    html_table() %>%
+    .[[3]]
+  
+  df_clean <- df %>%
+    .[2:nrow(df),2:25]
+  
+  names(df_clean) <- c("player", "nation", "pos", "team", "age", "yob", "matches_played", "matches_started", "mins_played", "played_90s", "goals", "assists", "goals_and_assists", "np_goals", "pens_scored", "pens_taken", "yellows", "reds", "xG", "npxG", "xAG", "npxG+xAG", "prog_carries", "prog_passes", "prog_pass_rec")
+  
+  df_clean <- df_clean %>%
+    filter(player != "Player") %>%
+    mutate(played_90s = as.numeric(played_90s)) %>%
+    filter(played_90s > (500/90)-1) %>%
+    mutate(
+      age_years = as.numeric(str_split_i(age, "-", 1)),
+      age_days = as.numeric(str_split_i(age, "-", 2)),
+      age = age_years + age_days/365,
+      nation = str_split_i(nation, " ", 2)
+    ) %>%
+    select(-c(age_years, age_days, goals_and_assists, "npxG+xAG", yob))
+  
+  df_final <- bind_rows(
+    df_final,
+    df_clean
+  )
+  
+  Sys.sleep(5)
+  
+}
+
+```
+
+```{r}
+df_final %>%
+  write.csv("data/standard_stats.csv", row.names = FALSE)
+```
+
+## Shooting
+
+```{r}
+urls <- c("https://fbref.com/en/comps/9/shooting/Premier-League-Stats", "https://fbref.com/en/comps/20/shooting/Bundesliga-Stats", "https://fbref.com/en/comps/12/shooting/La-Liga-Stats", "https://fbref.com/en/comps/11/shooting/Serie-A-Stats", "https://fbref.com/en/comps/13/shooting/Ligue-1-Stats")
+
+
+df_final <- data.frame()
+
+for (i in 1:length(urls)) {
+  
+  url <- urls[i]
+    
+  webpage <- read_html(url)
+  df <- read_html(webpage %>% 
+              as.character() %>%
+              str_replace_all("<!--", '') %>%
+              str_replace_all("-->", '')
+  ) %>%
+    html_elements("table") %>%
+    html_table() %>%
+    .[[3]]
+  
+  df_clean <- df %>%
+    .[2:nrow(df),2:20]
+  
+  names(df_clean) <- c("player", "nation", "pos", "team", "age", "yob", "played_90s", "goals", "shots", "shots_ot", "on_target_pct", "shots_p90", "shots_ot_p90", "goals_per_shot", "goals_per_sot", "avg_shot_dist", "free_kick_shots", "pens", "pens_taken")
+  
+  df_clean <- df_clean %>%
+    filter(player != "Player") %>%
+    mutate(
+      nation = str_split_i(nation, " ", 2)
+    ) %>%
+    select(-c(yob, age))
+  
+  df_final <- bind_rows(
+    df_final,
+    df_clean
+  )
+  
+  Sys.sleep(5)
+  
+}
+```
+
+```{r}
+df_final %>%
+  write.csv("data/shooting_stats.csv", row.names = FALSE)
+```
+
+## Passing
+
+```{r}
+urls <- c("https://fbref.com/en/comps/9/passing/Premier-League-Stats", "https://fbref.com/en/comps/20/passing/Bundesliga-Stats", "https://fbref.com/en/comps/12/passing/La-Liga-Stats", "https://fbref.com/en/comps/11/passing/Serie-A-Stats", "https://fbref.com/en/comps/13/passing/Ligue-1-Stats")
+
+
+df_final <- data.frame()
+
+for (i in 1:length(urls)) {
+# for (i in 1:1) {
+  
+  url <- urls[i]
+    
+  webpage <- read_html(url)
+  df <- read_html(webpage %>% 
+              as.character() %>%
+              str_replace_all("<!--", '') %>%
+              str_replace_all("-->", '')
+  ) %>%
+    html_elements("table") %>%
+    html_table() %>%
+    .[[3]]
+  
+  df_clean <- df %>%
+    .[2:nrow(df),2:31]
+  
+  names(df_clean) <- c("player", "nation", "pos", "team", "age", "yob", "played_90s", "pass_comp", "pass_att", "pass_comp_pct", "pass_dist", "prog_pass_dist", "short_comp", "short_att", "short_comp_pct", "med_comp", "med_att", "med_comp_pct", "long_comp", "long_att", "long_comp_pct", "assists", "xAG", "xA", "temp1", "key_passes", "pass_into_final_3rd", "pass_into_box", "cross_into_box", "prog_passes")
+  
+  df_clean <- df_clean %>%
+    filter(player != "Player") %>%
+    mutate(
+      nation = str_split_i(nation, " ", 2)
+    ) %>%
+    select(-c(yob, age, starts_with("temp")))
+  
+  df_final <- bind_rows(
+    df_final,
+    df_clean
+  )
+  
+  Sys.sleep(5)
+  
+}
+```
+
+```{r}
+df_final %>%
+  write.csv("data/passing_stats.csv", row.names = FALSE)
+```
+
+## Passing Types
+
+```{r}
+urls <- c("https://fbref.com/en/comps/9/passing_types/Premier-League-Stats", "https://fbref.com/en/comps/20/passing_types/Bundesliga-Stats", "https://fbref.com/en/comps/12/passing_types/La-Liga-Stats", "https://fbref.com/en/comps/11/passing_types/Serie-A-Stats", "https://fbref.com/en/comps/13/passing_types/Ligue-1-Stats")
+
+
+df_final <- data.frame()
+
+for (i in 1:length(urls)) {
+
+  url <- urls[i]
+    
+  webpage <- read_html(url)
+  df <- read_html(webpage %>% 
+              as.character() %>%
+              str_replace_all("<!--", '') %>%
+              str_replace_all("-->", '')
+  ) %>%
+    html_elements("table") %>%
+    html_table() %>%
+    .[[3]]
+  
+  df_clean <- df %>%
+    .[2:nrow(df),2:23]
+  
+  names(df_clean) <- c("player", "nation", "pos", "team", "age", "yob", "played_90s", "pass_att", "live_pass", "dead_pass", "free_kicks", "through_balls", "switches", "crosses", "throw_ins", "corners", "inswingers", "outswingers", "straight_corners", "pass_comp", "pass_offside", "pass_block")
+  
+  df_clean <- df_clean %>%
+    filter(player != "Player") %>%
+    mutate(
+      nation = str_split_i(nation, " ", 2)
+    ) %>%
+    select(-c(yob, age))
+  
+  df_final <- bind_rows(
+    df_final,
+    df_clean
+  )
+  
+  Sys.sleep(5)
+  
+}
+```
+
+```{r}
+df_final %>%
+  write.csv("data/passing_types_stats.csv", row.names = FALSE)
+```
+
+## Goal and Shot Creation
+
+```{r}
+
+urls <- c("https://fbref.com/en/comps/9/gca/Premier-League-Stats", "https://fbref.com/en/comps/20/gca/Bundesliga-Stats", "https://fbref.com/en/comps/12/gca/La-Liga-Stats", "https://fbref.com/en/comps/11/gca/Serie-A-Stats", "https://fbref.com/en/comps/13/gca/Ligue-1-Stats")
+
+
+df_final <- data.frame()
+
+for (i in 1:length(urls)) {
+
+  url <- urls[i]
+    
+  webpage <- read_html(url)
+  df <- read_html(webpage %>% 
+              as.character() %>%
+              str_replace_all("<!--", '') %>%
+              str_replace_all("-->", '')
+  ) %>%
+    html_elements("table") %>%
+    html_table() %>%
+    .[[3]]
+  
+  df_clean <- df %>%
+    .[2:nrow(df),2:24]
+  
+  names(df_clean) <- c("player", "nation", "pos", "team", "age", "yob", "played_90s", "shot_create_action", "temp1", "sca_live", "sca_dead", "sca_take_on", "sca_shot", "sca_foul", "sca_defense", "goal_create_action", "temp2", "gca_live", "gca_dead", "gca_take_on", "gca_shot", "gca_foul", "gca_defense")
+  
+  df_clean <- df_clean %>%
+    filter(player != "Player") %>%
+    mutate(
+      nation = str_split_i(nation, " ", 2)
+    ) %>%
+    select(-c(yob, age, starts_with("temp")))
+  
+  df_final <- bind_rows(
+    df_final,
+    df_clean
+  )
+  
+  Sys.sleep(5)
+  
+}
+```
+
+```{r}
+df_final %>%
+  write.csv("data/create_stats.csv", row.names = FALSE)
+```
+
+## Defensive Actions
+
+```{r}
+urls <- c("https://fbref.com/en/comps/9/defense/Premier-League-Stats", "https://fbref.com/en/comps/20/defense/Bundesliga-Stats", "https://fbref.com/en/comps/12/defense/La-Liga-Stats", "https://fbref.com/en/comps/11/defense/Serie-A-Stats", "https://fbref.com/en/comps/13/defense/Ligue-1-Stats")
+
+
+df_final <- data.frame()
+
+for (i in 1:length(urls)) {
+
+  url <- urls[i]
+    
+  webpage <- read_html(url)
+  df <- read_html(webpage %>% 
+              as.character() %>%
+              str_replace_all("<!--", '') %>%
+              str_replace_all("-->", '')
+  ) %>%
+    html_elements("table") %>%
+    html_table() %>%
+    .[[3]]
+  
+  df_clean <- df %>%
+    .[2:nrow(df),2:24]
+  
+  names(df_clean) <- c("player", "nation", "pos", "team", "age", "yob", "played_90s", "tackles", "tackles_won", "tackles_def_3rd", "tackles_mid_3rd", "tackles_att_3rd", "drib_tackles", "drib_tackles_att", "temp1", "tackles_lost", "blocks", "blocks_shot", "blocks_pass", "interceptions", "temp2", "clearances", "errors")
+  
+  df_clean <- df_clean %>%
+    filter(player != "Player") %>%
+    mutate(
+      nation = str_split_i(nation, " ", 2)
+    ) %>%
+    select(-c(yob, age, starts_with("temp")))
+  
+  df_final <- bind_rows(
+    df_final,
+    df_clean
+  )
+  
+  Sys.sleep(5)
+  
+}
+```
+
+```{r}
+df_final %>%
+  write.csv("data/defensive_stats.csv", row.names = FALSE)
+```
+
+## Possession
+
+```{r}
+urls <- c("https://fbref.com/en/comps/9/possession/Premier-League-Stats", "https://fbref.com/en/comps/20/possession/Bundesliga-Stats", "https://fbref.com/en/comps/12/possession/La-Liga-Stats", "https://fbref.com/en/comps/11/possession/Serie-A-Stats", "https://fbref.com/en/comps/13/possession/Ligue-1-Stats")
+
+
+df_final <- data.frame()
+
+for (i in 1:length(urls)) {
+
+  url <- urls[i]
+    
+  webpage <- read_html(url)
+  df <- read_html(webpage %>% 
+              as.character() %>%
+              str_replace_all("<!--", '') %>%
+              str_replace_all("-->", '')
+  ) %>%
+    html_elements("table") %>%
+    html_table() %>%
+    .[[3]]
+  
+  df_clean <- df %>%
+    .[2:nrow(df),2:30]
+  
+  names(df_clean) <- c("player", "nation", "pos", "team", "age", "yob", "played_90s", "touches", "touches_def_pen", "touches_def_3rd", "touches_mid_3rd", "touches_att_3rd", "touches_att_pen", "temp1", "take_ons_att", "take_ons_succ", "temp2", "take_ons_tackled", "temp3", "carries", "carry_dist", "prog_carry_dist", "prog_carries", "carries_final_3rd", "carries_att_pen", "miscontrols", "dispossessed", "passes_rec", "prog_passes_rec")
+  
+  df_clean <- df_clean %>%
+    filter(player != "Player") %>%
+    mutate(
+      nation = str_split_i(nation, " ", 2)
+    ) %>%
+    select(-c(yob, age, starts_with("temp")))
+  
+  df_final <- bind_rows(
+    df_final,
+    df_clean
+  )
+  
+  Sys.sleep(5)
+  
+}
+```
+
+```{r}
+df_final %>%
+  write.csv("data/possession_stats.csv", row.names = FALSE)
+```
