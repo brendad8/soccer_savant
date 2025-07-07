@@ -20,6 +20,8 @@ library(here)
 ```{r}
 urls <- c("https://fbref.com/en/comps/9/stats/Premier-League-Stats", "https://fbref.com/en/comps/20/stats/Bundesliga-Stats", "https://fbref.com/en/comps/12/stats/La-Liga-Stats", "https://fbref.com/en/comps/11/stats/Serie-A-Stats", "https://fbref.com/en/comps/13/stats/Ligue-1-Stats")
 
+league <- c("Premier League", "Bundesliga", "La Liga", "Serie A", "Ligue 1")
+
 df_final <- data.frame()
 
 for (i in 1:length(urls)) {
@@ -47,17 +49,19 @@ for (i in 1:length(urls)) {
     mutate(
       age_years = as.numeric(str_split_i(age, "-", 1)),
       age_days = as.numeric(str_split_i(age, "-", 2)),
-      age = age_years + age_days/365,
+      # age = age_years + age_days/365,
       nation = str_split_i(nation, " ", 2)
     ) %>%
-    select(-c(age_years, age_days, goals_and_assists, "npxG+xAG", yob))
+    select(-c(age_years, age_days, goals_and_assists, "npxG+xAG", yob)) %>%
+    mutate(league = league[i],
+           .before = team)
   
   df_final <- bind_rows(
     df_final,
     df_clean
   )
   
-  Sys.sleep(5)
+  Sys.sleep(2)
   
 }
 
@@ -319,7 +323,6 @@ df_final %>%
 
 ```{r}
 urls <- c("https://fbref.com/en/comps/9/possession/Premier-League-Stats", "https://fbref.com/en/comps/20/possession/Bundesliga-Stats", "https://fbref.com/en/comps/12/possession/La-Liga-Stats", "https://fbref.com/en/comps/11/possession/Serie-A-Stats", "https://fbref.com/en/comps/13/possession/Ligue-1-Stats")
-
 
 df_final <- data.frame()
 
